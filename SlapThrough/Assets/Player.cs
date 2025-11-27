@@ -1,118 +1,140 @@
+using System;
+using UnityEditor.Analytics;
 using UnityEngine;
 using UnityEngine.InputSystem;
+using UnityEngine.UIElements;
 
 public class Player : MonoBehaviour
 {
-	public CharacterController characterController;
+    public CharacterController characterController;
 
-	public float jumpPower = 10f;
-	public float gravity = 5f;
+    public float jumpPower = 10f;
+    public float gravity = 5f;
 
-	private Vector3 horizontalVelocity;
-	private Vector3 verticalVelocity;
+    private Vector3 horizontalVelocity;
+    private Vector3 verticalVelocity;
 
-	private float joystick;
+    private float joystick;
 
-	public float acceleration;
-	public float deceleration;
-	public float maxSpeed;
+    public float acceleration;
+    public float deceleration;
+    public float maxSpeed;
 
-	public float horizontalControl;
+    public float horizontalControl;
 
-	public float groundControl = 1;
-	public float airControl = 0.25f;
+    public float groundControl = 1;
+    public float airControl = 0.25f;
 
-	public float directionChangeBoost = 2;
+    public float directionChangeBoost = 2;
 
-	private bool justJumped = false;
+    private bool justJumped = false;
 
-	public float deadzone = 0.05f;
+    public float deadzone = 0.05f;
 
-	public float direction;
+    public float direction;
 
-	void Start()
-	{
+    protected Vector3 lastPosition;
 
-	}
+    int playerIndex = 0;
 
-	// Update is called once per frame
-	void Update()
-	{
-		HandleVertical();
-		HandleHorizontal();
+    void Start()
+    {
+        playerIndex = GameManager.Instance.WhatPlayerAmI(this);
+        SetupMaterial();
+    }
 
-		Vector3 totalVelocity = horizontalVelocity + verticalVelocity;
-		characterController.Move(totalVelocity * Time.deltaTime);
+    private void SetupMaterial()
+    {
+        gameObject.GetComponent<Renderer>().material.SetColor("_Color", GameManager.Instance.WhatColorAmI(this));
+    }
 
-		if (justJumped)
-		{
-			justJumped = false;
-		}
-	}
+    // Update is called once per frame
+    void Update()
+    {
+        HandleVertical();
+        HandleHorizontal();
+        MovePlayer();
 
-	private void HandleVertical()
-	{
-		if (characterController.isGrounded)
-		{
-			if (!justJumped)
-			{
-				verticalVelocity = Vector3.down;
-			}
-		}
+        if (justJumped)
+        {
+            justJumped = false;
+        }
 
-		else
-		{
-			verticalVelocity += Vector3.down * gravity * Time.deltaTime;
-		}
-	}
+        if ((transform.position - lastPosition).y == 0 && verticalVelocity.y > 0)
+        {
+            verticalVelocity = Vector3.zero;
+        }
+    }
 
-	private void HandleHorizontal()
-	{
-		if (characterController.isGrounded)
-		{
-			horizontalControl = groundControl;
-		}
-		else
-		{
-			horizontalControl = airControl;
-		}
+    private void MovePlayer()
+    {
+        lastPosition = transform.position;
+        Vector3 totalVelocity = horizontalVelocity + verticalVelocity;
+        totalVelocity.z = 0;
+        characterController.Move(totalVelocity * Time.deltaTime);
+    }
 
-		var directionDifference = Vector3.Dot(horizontalVelocity.normalized, (Vector3.right * direction).normalized);
+    private void HandleVertical()
+    {
+        if (characterController.isGrounded)
+        {
+            if (!justJumped)
+            {
+                verticalVelocity = Vector3.down;
+            }
+        }
 
-		var directionalBoost = directionDifference < 0 ? directionChangeBoost : 1;
+        else
+        {
+            verticalVelocity += Vector3.down * gravity * Time.deltaTime;
+        }
+    }
 
+    private void HandleHorizontal()
+    {
+        if (characterController.isGrounded)
+        {
+            horizontalControl = groundControl;
+        }
+        else
+        {
+            horizontalControl = airControl;
+        }
 
+        var directionDifference = Vector3.Dot(horizontalVelocity.normalized, (Vector3.right * direction).normalized);
 
-		if (Mathf.Abs(joystick) > deadzone)
-		{
-			if (joystick > 0) { direction = 1; }
-			if (joystick < 0) { direction = -1; }
+        var directionalBoost = directionDifference < 0 ? directionChangeBoost : 1;
 
-			horizontalVelocity = Vector3.MoveTowards(horizontalVelocity, Vector3.right * maxSpeed * direction, acceleration * directionalBoost * horizontalControl * Time.deltaTime);
-		}
+        if (Mathf.Abs(joystick) > deadzone)
+        {
+            if (joystick > 0) { direction = 1; }
+            if (joystick < 0) { direction = -1; }
 
-		else
-		{
-			//decelerate
-			horizontalVelocity = Vector3.MoveTowards(horizontalVelocity, Vector3.zero, deceleration * horizontalControl * Time.deltaTime);
-		}
-	}
+            horizontalVelocity = Vector3.MoveTowards(horizontalVelocity, Vector3.right * maxSpeed * direction, acceleration * directionalBoost * horizontalControl * Time.deltaTime);
+        }
 
-	public void OnJump()
-	{
-		if (!characterController.isGrounded)
-		{
-			print("NotGrounded");
-			return;
-		}
+        else
+        {
+            //decelerate
+            horizontalVelocity = Vector3.MoveTowards(horizontalVelocity, Vector3.zero, deceleration * horizontalControl * Time.deltaTime);
+        }
+    }
 
-		print("Yump");
-		verticalVelocity = Vector3.up * jumpPower;
-		justJumped = true;
-	}
+    public void OnJump()
+    {
+        if (!characterController.isGrounded)
+        {
+            print("NotGrounded");
+            return;
+        }
 
-	public void OnMove(InputValue input)
-	{
-		joystick = input.Get<Vector2>().x;
-	}
+        print("Yump");
+        verticalVelocity = Vector3.up * jumpPower;
+        justJumped = true;
+    }
+
+    public void OnMove(InputValue input)
+    {
+        joystick = input.Get<Vector2>().x;
+    }
 }
