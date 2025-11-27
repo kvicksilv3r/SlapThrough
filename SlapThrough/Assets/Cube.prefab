@@ -156,15 +156,16 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: f247866db61711e468886e98d6159a74, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::NewMonoBehaviourScript
-  characterController: {fileID: 0}
+  characterController: {fileID: 6186759267881504843}
   jumpPower: 12
   gravity: 25
-  acceleration: 40
-  deceleration: 40
+  acceleration: 50
+  deceleration: 50
   maxSpeed: 10
   horizontalControl: 1
   groundControl: 1
   airControl: 0.25
+  directionChangeBoost: 2
   deadzone: 0.05
   direction: 0
 --- !u!143 &6186759267881504843
