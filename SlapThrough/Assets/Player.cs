@@ -1,8 +1,7 @@
 using System;
-using UnityEditor.Analytics;
+using System.Collections;
 using UnityEngine;
 using UnityEngine.InputSystem;
-using UnityEngine.UIElements;
 
 public class Player : MonoBehaviour
 {
@@ -31,16 +30,55 @@ public class Player : MonoBehaviour
 
     public float deadzone = 0.05f;
 
-    public float direction;
+    public float direction = 1;
 
     protected Vector3 lastPosition;
 
-    int playerIndex = 0;
+    private bool disabled = false;
+
+    public float visibilityTime = 0.4f;
+
+    public float lastVisibilityToggle = -9999;
+    public float lastAttack = -9999;
+
+    public float attackCoolDown = 1f;
+
+    public bool visible = false;
+
+    public Vector3 punchHolsterOrigin;
+
+    public Renderer rend;
+
+    public Transform punchHolster;
+    public BoxCollider punchCollider;
+
+
+    private void Awake()
+    {
+        OnCreate();
+    }
+
+    private void OnCreate()
+    {
+        SetupMaterial();
+        //Disable();
+        SetSpawnPosition();
+        punchHolsterOrigin = punchHolster.localPosition;
+    }
+
+    public void Disable()
+    {
+        disabled = true;
+    }
+
+    public void Enable()
+    {
+        disabled = false;
+    }
 
     void Start()
     {
-        playerIndex = GameManager.Instance.WhatPlayerAmI(this);
-        SetupMaterial();
+
     }
 
     private void SetupMaterial()
@@ -48,12 +86,26 @@ public class Player : MonoBehaviour
         gameObject.GetComponent<Renderer>().material.SetColor("_Color", GameManager.Instance.WhatColorAmI(this));
     }
 
+    public void SetSpawnPosition()
+    {
+        characterController.enabled = false;
+        transform.position = GameManager.Instance.GetSpawnPosition(this);
+        characterController.enabled = true;
+    }
+
     // Update is called once per frame
     void Update()
     {
+        if (disabled)
+        {
+            return;
+        }
+
         HandleVertical();
         HandleHorizontal();
         MovePlayer();
+        HandleVisibility();
+        SetFacing();
 
         if (justJumped)
         {
@@ -64,6 +116,11 @@ public class Player : MonoBehaviour
         {
             verticalVelocity = Vector3.zero;
         }
+    }
+
+    private void SetFacing()
+    {
+        punchHolster.localPosition = punchHolsterOrigin * direction;
     }
 
     private void MovePlayer()
@@ -120,6 +177,29 @@ public class Player : MonoBehaviour
         }
     }
 
+    private void HandleVisibility()
+    {
+        var showPlayer = visible || Time.time < (lastVisibilityToggle + visibilityTime);
+        rend.enabled = showPlayer;
+    }
+
+    IEnumerator ThrowPunch()
+    {
+        punchCollider.enabled = true;
+
+        yield return new WaitForSeconds(0);
+
+        punchCollider.enabled = false;
+    }
+
+    private void OnTriggerEnter(Collider other)
+    {
+        if (other != this && other.CompareTag("Player"))
+        {
+            print("You punched the fucker");
+        }
+    }
+
     public void OnJump()
     {
         if (!characterController.isGrounded)
@@ -136,5 +216,18 @@ public class Player : MonoBehaviour
     public void OnMove(InputValue input)
     {
         joystick = input.Get<Vector2>().x;
+    }
+
+    public void OnCrouch(InputValue input)
+    {
+        lastVisibilityToggle = Time.time;
+    }
+
+    public void OnAttack(InputValue input)
+    {
+        if (Time.time > lastAttack + attackCoolDown)
+        {
+            StartCoroutine(ThrowPunch());
+        }
     }
 }
